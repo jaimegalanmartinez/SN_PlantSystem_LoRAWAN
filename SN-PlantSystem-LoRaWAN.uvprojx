@@ -418,6 +418,36 @@
               <FileType>5</FileType>
               <FilePath>./trace_helper.h</FilePath>
             </File>
+            <File>
+              <FileName>hardware.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\hardware.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>hardware.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\hardware.h</FilePath>
+            </File>
+            <File>
+              <FileName>accelerometer_advanced.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\accelerometer_advanced.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>accelerometer_advanced.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\accelerometer_advanced.h</FilePath>
+            </File>
+            <File>
+              <FileName>log_values_sensors.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\log_values_sensors.cpp</FilePath>
+            </File>
+            <File>
+              <FileName>log_values_sensors.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\log_values_sensors.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
