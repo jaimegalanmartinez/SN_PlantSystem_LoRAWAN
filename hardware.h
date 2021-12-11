@@ -3,7 +3,7 @@
 #include "Accel_MMA8451Q/MMA8451Q.h"
 #include "Si7021/Si7021.h"
 #include "GPS/MBed_Adafruit_GPS.h"
-/*EPC PlantSystem project
+/*Sensor Networks PlantSystem project
 * @Authors: Jaime Galan Martinez
 *						Victor Aranda Lopez
 */

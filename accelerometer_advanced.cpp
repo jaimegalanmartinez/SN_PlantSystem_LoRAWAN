@@ -2,7 +2,6 @@
 #include "hardware.h"
 #include "accelerometer_advanced.h"
 
-
 void updatePlantOrientation ( PlantOrientationLog *log, float accel_values[3])
 {
 	if(log->previousState==UP){//If plant was up

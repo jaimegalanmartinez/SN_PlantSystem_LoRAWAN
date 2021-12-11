@@ -1,6 +1,6 @@
 #include "mbed.h"
 #include "log_values_sensors.h"
-/*EPC PlantSystem project
+/*Sensor Networks PlantSystem project
 * @Authors: Jaime Galan Martinez
 *						Victor Aranda Lopez
 */

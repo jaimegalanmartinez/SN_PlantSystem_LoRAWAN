@@ -14,6 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+ /*Sensor Networks PlantSystem project
+* @Authors: Jaime Galan Martinez
+*						Victor Aranda Lopez
+*/
+
 #include <stdio.h>
 
 #include "lorawan/LoRaWANInterface.h"
@@ -25,7 +30,16 @@
 #include "trace_helper.h"
 #include "lora_radio_helper.h"
 
+#include "mbed.h"
+#include "log_values_sensors.h"
+#include "accelerometer_advanced.h"
+#include "functions.h"
+
 using namespace events;
+
+//Threads
+Thread measure_thread(osPriorityNormal, STACK_SIZE_MEASURE_THREAD, nullptr, nullptr);//Measures all elements except the GPS
+Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
 
 // Max payload size can be LORAMAC_PHY_MAXPAYLOAD.
 // This example only communicates with much shorter messages (<30 bytes).
@@ -86,7 +100,9 @@ static LoRaWANInterface lorawan(radio);
  * Application specific callbacks
  */
 static lorawan_app_callbacks_t callbacks;
-// Jaime DEV_EUI = {0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94}
+
+// Jaime Galan   DEV_EUI = {0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group J
+// Victor Aranda DEV_EUI = {0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group C
 static uint8_t DEV_EUI[] = { 0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
 static uint8_t APP_EUI[] = { 0x70, 0xb3, 0xd5, 0x7e, 0xd0, 0x00, 0xfc, 0xda };
 //Same value for sw application receiving the information

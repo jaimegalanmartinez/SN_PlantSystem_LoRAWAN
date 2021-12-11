@@ -1,5 +1,9 @@
 #include "mbed.h"
 #include "hardware.h"
+/*Sensor Networks PlantSystem project
+* @Authors: Jaime Galan Martinez
+*						Victor Aranda Lopez
+*/
 
 #ifndef _ACCELEROMETER_ADVANCED_H_
 #define _ACCELEROMETER_ADVANCED_H_
