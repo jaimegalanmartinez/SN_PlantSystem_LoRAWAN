@@ -15,6 +15,12 @@ Mail<mail_t, MAIL_QUEUE_SIZE> print_mail_box;
 Mail<mail_t_logs, MAIL_QUEUE_SIZE> print_logs_mail_box;
 //Mailbox for communicate sensor_data, plant orientation and plant events to the main thread with the output thread in advanced mode
 Mail<mail_t_advanced, MAIL_QUEUE_SIZE> print_mail_box_advanced;
+//Mialbox to communicate the output htread that has all measurements to the send_message function that is executed periodicaly to sent them to LoRaWAN
+Mail<mail_t_LoRaWAN, MAIL_QUEUE_SIZE> send_message_mail_box;
+//Threads
+Thread measure_thread(osPriorityNormal, STACK_SIZE_MEASURE_THREAD, nullptr, nullptr);//Measures all elements except the GPS
+Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
+Thread state_machine_thread(osPriorityNormal,STACK_SIZE_STATE_MACHINE_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
 
 EventFlags event_flags;
 Mutex serial_mutex; //Mutex for serial communication
@@ -40,6 +46,142 @@ void user_button()
 void ISR_accelTap(){
 	is_accel_interruptTap = true;
 }
+
+void state_machine(void) {
+	Log log_values;//Global instance of the struct
+	//Initialization
+	bool full_hour_flag = false;
+	initLog(&log_values);
+	uint32_t flags_read = 0;
+	PlantOrientationLog plantLog;//Stores the status of the plant regarding the advanced mode
+	plantLog.count_plant_falls=0;
+	plantLog.previousState=UP;
+	//RGB_LED OFF
+	RGB_LED=0b000;
+	//User Button mode and fall interrupt
+	button.mode(PullUp);
+	button.fall(&user_button);
+	//Accel interrupt INT1 (Single Tap)
+	PlantEvents plantEvents;
+	plantEvents.count_single_taps = 0;
+	plantEvents.count_plant_freefalls = 0;
+	accel_interruptTap.rise(&ISR_accelTap);
+	//Starting threads
+	measure_thread.start(callback(measure_sensors));
+	output_thread.start(callback(GPS_and_print_info_system));
+	//LEDs off except TEST
+	TestMode_LED     = ON;
+	NormalMode_LED   = OFF;
+	AdvancedMode_LED = OFF;
+  while(true) {
+		//If button is pressed: Change mode
+		if(user_button_flag){
+			user_button_flag = false;
+			if(mode == TEST){//To NORMAL
+				mode = NORMAL;
+				TestMode_LED   = OFF;
+				NormalMode_LED = ON;
+				halfHourTicker.attach_us(&half_hour_irq,PERIOD_HALF_HOUR);
+				initLog(&log_values);//Reset the log to start again
+			}else if (mode == NORMAL){ //To ADVANCED
+				mode = ADVANCED;
+				NormalMode_LED   = OFF;
+				AdvancedMode_LED = ON;
+				halfHourTicker.detach();
+				
+				accel_sensor.setupSingleTap();
+				accel_sensor.initFreeFall();
+				half_hour_flag=false;
+				full_hour_flag=false;
+			}else if (mode == ADVANCED){//To TEST
+				accel_sensor.uninitFreeFall();
+				accel_sensor.disableSingleTap();
+				mode = TEST;
+				AdvancedMode_LED = OFF;
+				TestMode_LED = ON;
+			}
+		}//user button if	
+		switch (mode){//State machine
+			case TEST:
+				//NormalMode_LED   = 0;
+				//AdvancedMode_LED = 0;
+				flags_read = event_flags.wait_any(EV_FLAG_READ_SENSORS,0);
+			  
+				if(flags_read == EV_FLAG_READ_SENSORS){
+					event_flags.clear(EV_FLAG_READ_SENSORS);
+					//when it's received send event to output thread to print system info:
+					//Read mail_data from sensor mailbox (sensors data) and put it in print mailbox
+					mail_t *mail_data_sensor = (mail_t *) sensor_data_mail_box.try_get();
+					if(mail_data_sensor != NULL){
+						set_color_RGB_led(mail_data_sensor->dominant_color);
+						put_sensor_data_to_print_mail(mail_data_sensor);
+					}
+					sensor_data_mail_box.free(mail_data_sensor);
+				}
+			break;
+			case NORMAL:
+				flags_read = event_flags.wait_any(EV_FLAG_READ_SENSORS,0);
+			  
+				if(flags_read == EV_FLAG_READ_SENSORS){
+					event_flags.clear(EV_FLAG_READ_SENSORS);
+					//when it's received send event to output thread to print system info:
+					//Read mail_data from sensor mailbox (sensors data) and put it in print mailbox
+					mail_t *mail_data_sens = (mail_t *) sensor_data_mail_box.try_get();
+					if(mail_data_sens != NULL){
+						//Check errors (out of bound values) and print errors in RGB led
+						checkRange_and_set_RGB_color(mail_data_sens->temperature,mail_data_sens->humidity,mail_data_sens->light,mail_data_sens->moisture,mail_data_sens->accel_values,mail_data_sens->dominant_color);
+						//Update log_values with the new recorded values
+						updateLog(&log_values,mail_data_sens->temperature,mail_data_sens->humidity,mail_data_sens->light,mail_data_sens->moisture,mail_data_sens->dominant_color,mail_data_sens->accel_values);
+						//Receive sensors data from measure_thread and send it to output_thread to print info		
+						put_sensor_data_to_print_mail(mail_data_sens);
+					}
+					sensor_data_mail_box.free(mail_data_sens);
+				}//flag_read_sensors
+				if(half_hour_flag){
+					half_hour_flag = false;
+					if(full_hour_flag){//If 1 hour elapsed
+						full_hour_flag = false;
+						//Calculate average values
+						calculate_average_sensors_data(&log_values);
+						//Calculate dominant color
+						char dominant_color_system = calculate_dominant_color_from_logs(log_values);
+						//Send log info to output thread
+						put_log_sensor_data_to_print_mail_logs(log_values, dominant_color_system);
+						//Reset log values to start over for the next hour
+						initLog(&log_values);
+					}else
+						full_hour_flag = true;
+					}
+			break;
+			case ADVANCED:
+				if(is_accel_interruptTap) { //Single Tap
+							is_accel_interruptTap = false;
+							plantEvents.count_single_taps++;	
+				}
+				
+				flags_read = event_flags.wait_any(EV_FLAG_READ_SENSORS,0);
+			  
+				if(flags_read == EV_FLAG_READ_SENSORS){
+					event_flags.clear(EV_FLAG_READ_SENSORS);
+					//when it's received send event to output thread to print system info:
+					//Read mail_data from sensor mailbox (sensors data) and put it in print mailbox
+					mail_t *mail_data_sensor = (mail_t *) sensor_data_mail_box.try_get();
+					if(mail_data_sensor != NULL){
+						updatePlantOrientation(&plantLog,mail_data_sensor->accel_values);
+						
+						//Detects free fall by reading the FF_MT_SRC Source Register
+						if(accel_sensor.getFF()){
+							plantEvents.count_plant_freefalls++;
+						}
+						
+						put_sensor_data_to_print_mail_advanced(&plantLog,mail_data_sensor, &plantEvents);
+					}
+					sensor_data_mail_box.free(mail_data_sensor);
+				}
+			break;
+		}//switch
+	}//while
+} //main
 
 /** Function checkRange_and_set_RGB_color
 	@description Check sensor data ranges and set the RGB color.
@@ -386,6 +528,13 @@ void GPS_and_print_info_system(void){
 			serial_mutex.unlock();
 			print_mail_box.free(mail_data_info);
 			event_flags.clear(EV_FLAG_PRINT_INFO);
+				//Add them to send_message_mail_box
+				
+				
+				
+				
+				
+				
 			}				
 		}
 		if(flags_read_serial_th == EV_FLAG_PRINT_INFO_LOGS){

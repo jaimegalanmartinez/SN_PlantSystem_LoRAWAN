@@ -25,8 +25,10 @@
 #define SENSORS_READ_CADENCY_NORMAL 30000ms //30000ms (30s) normal operation, Testing = 2000ms
 #define SENSORS_READ_CADENCY_ADVANCED 2000ms 
 //Stack size for threads
-#define STACK_SIZE_OUTPUT_THREAD 2048
-#define STACK_SIZE_MEASURE_THREAD 512
+#define STACK_SIZE_OUTPUT_THREAD 1500
+#define STACK_SIZE_MEASURE_THREAD 400
+#define STACK_SIZE_STATE_MACHINE_THREAD 4096
+
 //Ranges for sensor data
 #define TEMPERATURE_MAX 22
 #define TEMPERATURE_MIN 15
@@ -59,10 +61,34 @@ typedef struct {
 		char dominant_color;
 } mail_t_logs;
 
-
+/*
+ * Structure to send the measured values and the GPS to the send_message thread so that 
+ * they are senit to LoRaWAN.
+ */
+ typedef struct {
+		float temperature;
+		float humidity;
+		float light;
+		float moisture;
+		float accel_values[3];
+	  int rgb_readings[4];
+		char dominant_color;
+		float latitude;
+		float longitude;
+		float altitude;
+		uint8_t local_time_hour;
+		uint8_t minute;
+		uint8_t seconds;
+} mail_t_LoRaWAN;
+ 
 extern Mail<mail_t, MAIL_QUEUE_SIZE> sensor_data_mail_box, print_mail_box;
 extern Mail<mail_t_logs, MAIL_QUEUE_SIZE> print_logs_mail_box;
 extern Mail<mail_t_advanced, MAIL_QUEUE_SIZE> print_mail_box_advanced;
+extern Mail<mail_t_LoRaWAN, MAIL_QUEUE_SIZE> send_message_mail_box;
+//Threads
+extern Thread measure_thread;//Measures all elements except the GPS
+extern Thread output_thread;//Prints the relevant data to the serial port (printf) and controls also the GPS
+extern Thread state_machine_thread;//Prints the relevant data to the serial port (printf) and controls also the GPS
 
 extern volatile bool user_button_flag;
 extern bool half_hour_flag, is_accel_interruptTap;
@@ -77,6 +103,7 @@ extern Mode mode;
 void half_hour_irq();
 void user_button();
 void ISR_accelTap();
+void state_machine(void);
 /** Function checkRange_and_set_RGB_color
 	@description Check sensor data ranges and set the RGB color.
 	@params temperature, humidity, light_value, moisture_value, accel_values and dominantColor

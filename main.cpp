@@ -34,12 +34,9 @@
 #include "log_values_sensors.h"
 #include "accelerometer_advanced.h"
 #include "functions.h"
-
+#include "RTOSerrstr.h"
 using namespace events;
 
-//Threads
-Thread measure_thread(osPriorityNormal, STACK_SIZE_MEASURE_THREAD, nullptr, nullptr);//Measures all elements except the GPS
-Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
 
 // Max payload size can be LORAMAC_PHY_MAXPAYLOAD.
 // This example only communicates with much shorter messages (<30 bytes).
@@ -164,7 +161,12 @@ int main(void)
     }
 
     printf("\r\n Connection - In Progress ...\r\n");
-
+		//state_machine_thread.start(&state_machine);
+		osStatus err = state_machine_thread.start(&state_machine);
+		 if (err) { 
+				printf("\r\n Error %s\r\n",getOsStatusStr(err));
+		 }
+		
     // make your event queue dispatching events forever
     ev_queue.dispatch_forever();
 

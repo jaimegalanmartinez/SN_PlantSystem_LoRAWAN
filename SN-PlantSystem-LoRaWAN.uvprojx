@@ -458,6 +458,16 @@
               <FileType>5</FileType>
               <FilePath>.\functions.h</FilePath>
             </File>
+            <File>
+              <FileName>RTOSerrstr.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\RTOSerrstr.h</FilePath>
+            </File>
+            <File>
+              <FileName>RTOSerrstr.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\RTOSerrstr.cpp</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
