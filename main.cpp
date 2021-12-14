@@ -31,8 +31,6 @@
 #include "lora_radio_helper.h"
 
 #include "mbed.h"
-#include "log_values_sensors.h"
-#include "accelerometer_advanced.h"
 #include "functions.h"
 #include "RTOSerrstr.h"
 using namespace events;
@@ -100,7 +98,7 @@ static lorawan_app_callbacks_t callbacks;
 
 // Jaime Galan   DEV_EUI = {0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group J
 // Victor Aranda DEV_EUI = {0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group C
-static uint8_t DEV_EUI[] = { 0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
+static uint8_t DEV_EUI[] = { 0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
 static uint8_t APP_EUI[] = { 0x70, 0xb3, 0xd5, 0x7e, 0xd0, 0x00, 0xfc, 0xda };
 //Same value for sw application receiving the information
 static uint8_t APP_KEY[] = { 0xf3,0x1c,0x2e,0x8b,0xc6,0x71,0x28,0x1d,0x51,0x16,0xf0,0x8f,0xf0,0xb7,0x92,0x8f };
@@ -161,12 +159,15 @@ int main(void)
     }
 
     printf("\r\n Connection - In Progress ...\r\n");
-		//state_machine_thread.start(&state_machine);
-		osStatus err = state_machine_thread.start(&state_machine);
+		/*state_machine_thread.start(&state_machine);
+		osStatus err = state_machine_thread.start(callback(state_machine));
 		 if (err) { 
 				printf("\r\n Error %s\r\n",getOsStatusStr(err));
-		 }
-		
+		 }*/
+		/*osStatus err = output_thread.start(callback(read_GPS));
+		if (err) { 
+				printf("\r\n Error %s\r\n",getOsStatusStr(err));
+		 }*/
     // make your event queue dispatching events forever
     ev_queue.dispatch_forever();
 
@@ -182,7 +183,7 @@ static void send_message()
     int16_t retcode;
     int32_t sensor_value;
 
-    if (ds1820.begin()) {
+    /*if (ds1820.begin()) {
         ds1820.startConversion();
         sensor_value = ds1820.read();
         printf("\r\n Dummy Sensor Value = %d \r\n", sensor_value);
@@ -190,10 +191,96 @@ static void send_message()
     } else {
         printf("\r\n No sensor found \r\n");
         return;
-    }
+    }*/
+	//FRAME: Temp (4bytes), Humidity (4bytes), Light (4bytes), Moisture (4bytes), Latitude (4bytes), Longitude (4bytes)
+		float temp = 25.2; //0x 41 c9 99 9a - in buffer -> 9A99 C941
+		float humidity = 45.2; //0x4234cccd -> CDCC 3442
+		float light = 10.2; //0x41233333
+		float moisture = 32.1; //0x42006666
+		//UPM campus sur library
+		float latitude = 40.3903; //0x42218fab
+		float longitude = -3.62702; //0xc0682118
+		tempHumSensor.get_data();
+		temp = tempHumSensor.get_temperature()/1000.0;//Value is multiplied by 1000
+		humidity = tempHumSensor.get_humidity()/1000.0;//Value is multiplied by 1000
+		//Light sensor
+		light = lightSensor.read_u16()*100.0/65536.0;
+		//Moisture sensor
+		moisture = moistureSensor.read_u16()*100.0/65536.0;
+		uint8_t read_gps_obtained=false;
+		while(!read_gps_obtained){
+		//GPS
+		char c = GPS_sensor.read();
+		//If a NMEA message is received
+		if (GPS_sensor.newNMEAreceived()) {
+			if (!GPS_sensor.parse(GPS_sensor.lastNMEA())){  // this also sets the newNMEAreceived() flag to false
+			// we can fail to parse a sentence in which case we should just wait for another
+					;
+			}else{
+				//mail_t_gps *mail_data_gps = gps_mail_box.try_calloc();
 
-    packet_len = sprintf((char *) tx_buffer, "%d",
-                         sensor_value);
+			
+			//Modify hour to Madrid latitude
+			uint8_t local_time_hour = GPS_sensor.hour + 1; //UTC+1 (Madrid Winter time)
+			if(local_time_hour > 23) local_time_hour = 0;
+			
+			latitude = GPS_sensor.latitude/100;
+			longitude = GPS_sensor.longitude/100;
+			//mail_data_gps->local_time_hour = local_time_hour;
+			//mail_data_gps->minute = GPS_sensor.minute;
+			//mail_data_gps->seconds = GPS_sensor.seconds;
+				
+			//serial_mutex.lock();
+			//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
+			//	GPS_sensor.longitude/100,GPS_sensor.altitude,local_time_hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
+			//serial_mutex.unlock();
+				read_gps_obtained=true;
+			//gps_mail_box.put(mail_data_gps);
+			//event_flags.set(EV_FLAG_READ_GPS);	
+				
+				
+			
+		//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
+		//		GPS_sensor.longitude/100,GPS_sensor.altitude,GPS_sensor.hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
+			
+		//Reads if there is anything to print
+	}	
+		}
+	}/*
+		uint32_t flags_read_gps_th = event_flags.wait_any(EV_FLAG_READ_GPS,0);//Wait for flag to send the information
+		
+		if(flags_read_gps_th == EV_FLAG_READ_GPS){
+			mail_t_gps *mail_data_gps = (mail_t_gps *) gps_mail_box.try_get();//Get sensors value
+			latitude= mail_data_gps->latitude;
+			longitude=mail_data_gps->longitude;
+			gps_mail_box.free(mail_data_gps);
+			event_flags.clear(EV_FLAG_READ_GPS);
+		}*/
+		printf("GPS: Lat(UTC): %d, Long(UTC): %d \n",(int)latitude,(int)longitude);
+		
+		
+		//41C9 999A 4234 CCCD 4123 3333 4200 6666 4221 8FAB C068 2118
+		//IN BUFFER TX: 9a99c941/cdcc3442/33332341/66660042/  ab8f2142/ 182168c0/ 00 00 00 00 00 00
+		memcpy(tx_buffer, &temp, sizeof(float));
+		packet_len = (sizeof(float));
+		memcpy(tx_buffer + packet_len, &humidity, sizeof(float));
+		packet_len += (sizeof(float));
+		memcpy(tx_buffer + packet_len, &light, sizeof(float));
+		packet_len += (sizeof(float));
+		memcpy(tx_buffer + packet_len, &moisture, sizeof(float));
+		packet_len += (sizeof(float));
+		memcpy(tx_buffer + packet_len, &latitude, sizeof(float));
+		packet_len += (sizeof(float));
+		memcpy(tx_buffer + packet_len, &longitude, sizeof(float));
+		packet_len += (sizeof(float));
+		
+		//PRINT FRAME TO SEND 
+		for(uint8_t i = 0; i < sizeof(tx_buffer); i ++){
+			printf("%02x", tx_buffer[i]);
+		}
+
+    //packet_len = sprintf((char *) tx_buffer, "%d",
+    //                    sensor_value);
 
     retcode = lorawan.send(MBED_CONF_LORA_APP_PORT, tx_buffer, packet_len,
                            MSG_UNCONFIRMED_FLAG);
@@ -229,6 +316,13 @@ static void receive_message()
     if (retcode < 0) {
         printf("\r\n receive() - Error code %d \r\n", retcode);
         return;
+    }
+    if(strncmp((char *)rx_buffer, "OFF" , sizeof(retcode)) == 0){ //OFF -> 4F 46 46
+        printf("Led off"); 
+    }else if (strncmp((char *)rx_buffer, "Green" ,sizeof(retcode)) == 0){ //Green -> 47 72 65 65 6e
+        printf("Led green"); 
+    }else if (strncmp((char *)rx_buffer, "Red" , sizeof(retcode)) == 0){ //Red -> 52 65 64
+        printf("Led red"); 
     }
 
     printf(" RX Data on port %u (%d bytes): ", port, retcode);

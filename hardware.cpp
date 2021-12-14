@@ -21,3 +21,4 @@ AnalogIn lightSensor(PA_4);
 BusOut RGB_LED(PH_0,PH_1,PB_13);
               //LSB      MSB
 Ticker halfHourTicker;
+Ticker GPS_send_Ticker;

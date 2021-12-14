@@ -1,5 +1,5 @@
 #include "functions.h"
-
+#include "RTOSerrstr.h"
 volatile bool user_button_flag = false;
 bool half_hour_flag = false;
 bool is_accel_interruptTap = false;
@@ -8,21 +8,22 @@ bool is_accel_interruptTap = false;
 Mode mode = TEST;
 
 //Mailbox for communicate the measure thread with the main thread
-Mail<mail_t, MAIL_QUEUE_SIZE> sensor_data_mail_box;
+//ail<mail_t, MAIL_QUEUE_SIZE> sensor_data_mail_box;
 //Mailbox for communicate the main thread with the output thread
-Mail<mail_t, MAIL_QUEUE_SIZE> print_mail_box;
+//Mail<mail_t, MAIL_QUEUE_SIZE> print_mail_box;
 //Mailbox for communicate sensor_data logs the main thread with the output thread
-Mail<mail_t_logs, MAIL_QUEUE_SIZE> print_logs_mail_box;
+//Mail<mail_t_logs, MAIL_QUEUE_SIZE> print_logs_mail_box;
 //Mailbox for communicate sensor_data, plant orientation and plant events to the main thread with the output thread in advanced mode
-Mail<mail_t_advanced, MAIL_QUEUE_SIZE> print_mail_box_advanced;
+//Mail<mail_t_advanced, MAIL_QUEUE_SIZE> print_mail_box_advanced;
 //Mialbox to communicate the output htread that has all measurements to the send_message function that is executed periodicaly to sent them to LoRaWAN
-Mail<mail_t_LoRaWAN, MAIL_QUEUE_SIZE> send_message_mail_box;
+//Mail<mail_t_gps, MAIL_QUEUE_SIZE> gps_mail_box;
 //Threads
-Thread measure_thread(osPriorityNormal, STACK_SIZE_MEASURE_THREAD, nullptr, nullptr);//Measures all elements except the GPS
+//Thread measure_thread(osPriorityNormal, STACK_SIZE_MEASURE_THREAD, nullptr, nullptr);//Measures all elements except the GPS
 Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
-Thread state_machine_thread(osPriorityNormal,STACK_SIZE_STATE_MACHINE_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
+//Thread output_thread(osPriorityNormal,STACK_SIZE_STATE_MACHINE_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
 
 EventFlags event_flags;
+
 Mutex serial_mutex; //Mutex for serial communication
 
 /*
@@ -46,7 +47,7 @@ void user_button()
 void ISR_accelTap(){
 	is_accel_interruptTap = true;
 }
-
+/*
 void state_machine(void) {
 	Log log_values;//Global instance of the struct
 	//Initialization
@@ -67,8 +68,15 @@ void state_machine(void) {
 	plantEvents.count_plant_freefalls = 0;
 	accel_interruptTap.rise(&ISR_accelTap);
 	//Starting threads
-	measure_thread.start(callback(measure_sensors));
-	output_thread.start(callback(GPS_and_print_info_system));
+	osStatus err =measure_thread.start(callback(measure_sensors));
+		 if (err) { 
+				printf("\r\n measure_thread Error %s\r\n",getOsStatusStr(err));
+		 }
+	err = output_thread.start(callback(GPS_and_print_info_system));
+		 
+		 if (err) { 
+				printf("\r\n output_thread Error %s\r\n",getOsStatusStr(err));
+		 }
 	//LEDs off except TEST
 	TestMode_LED     = ON;
 	NormalMode_LED   = OFF;
@@ -182,7 +190,7 @@ void state_machine(void) {
 		}//switch
 	}//while
 } //main
-
+*/
 /** Function checkRange_and_set_RGB_color
 	@description Check sensor data ranges and set the RGB color.
 	@params temperature, humidity, light_value, moisture_value, accel_values and dominantColor
@@ -211,7 +219,7 @@ void state_machine(void) {
 	Color when is in range:
 	No errors: Green - Detecting plant
 */
-void checkRange_and_set_RGB_color(float temperature,float humidity,float light_value_f,float moisture_value_f,float accel_values [],char dominantColor){
+/*void checkRange_and_set_RGB_color(float temperature,float humidity,float light_value_f,float moisture_value_f,float accel_values [],char dominantColor){
 	if(temperature > TEMPERATURE_MAX || temperature < TEMPERATURE_MIN)
 		RGB_LED=0b000;
 	else	if(humidity > HUMIDITY_MAX || humidity < HUMIDITY_MIN){
@@ -227,13 +235,13 @@ void checkRange_and_set_RGB_color(float temperature,float humidity,float light_v
 	}else if(dominantColor == 'G'){//If no errors=GREEN, detecting plant
 		RGB_LED=0b010;
 	}
-}
+}*/
 /**
 * Set the dominant color of the plant based on the readings provided by the color sensor
 * @param int rgb_readings[4]
 *	@return dominant_color ('R'= red, 'G'= green, 'B' = blue, 'N' = none)
 */
-char set_dominant_color(int rgb_readings[4]){
+/*char set_dominant_color(int rgb_readings[4]){
 	char dominant_color = 'N';
 	if(rgb_readings[1]>rgb_readings[2] && rgb_readings[1]>=rgb_readings[3]){//If max=RED
 		dominant_color='R'; //red
@@ -248,13 +256,13 @@ char set_dominant_color(int rgb_readings[4]){
 		dominant_color='N'; //nothing
 	}
 	return dominant_color;
-}
+}*/
 /**
 * With the dominant color we set the RGB led color
 *
 * RGB_LED ('R'= 0b001, 'G'= 0b010, 'B' = 0b100, 'N' = 0b000)
 */
-void set_color_RGB_led(char dominant_color){
+/*void set_color_RGB_led(char dominant_color){
 	if(dominant_color == 'R'){//If max=RED
 		RGB_LED=0b001;
 	}else if(dominant_color == 'G'){//If max=Green
@@ -265,7 +273,7 @@ void set_color_RGB_led(char dominant_color){
 		RGB_LED=0b000;
 	}
 }
-
+*/
 
 /**
 * Function put_sensor_data_on_Mailbox
@@ -273,7 +281,7 @@ void set_color_RGB_led(char dominant_color){
 * and activate event flag EV_FLAG_READ_SENSORS to inform the main thread. 
 * Executed each depending on the mode: SENSORS_READ_CADENCY_TEST (2s),SENSORS_READ_CADENCY_NORMAL (30s), SENSORS_READ_CADENCY_ADVANCED(2s) in the measure_thread
 */
-void put_sensor_data_on_Mailbox(void)
+/*void put_sensor_data_on_Mailbox(void)
 {
 		int rgb_readings[4]; // declare a 4 element array to store RGB sensor readings
 		float accel_values [3];
@@ -307,7 +315,7 @@ void put_sensor_data_on_Mailbox(void)
     sensor_data_mail_box.put(mail_data_sensors);
 		event_flags.set(EV_FLAG_READ_SENSORS);		
 }
-
+*/
 /////////////////////////////////////////////////////////////////////////////////////
 /**
 * Function put_sensor_data_to_print_mail, executed by the main thread.
@@ -315,7 +323,7 @@ void put_sensor_data_on_Mailbox(void)
 * Description:  Get the mail data from sensor mailbox, put in on print mailbox 
 * and activate event flag EV_FLAG_PRINT_INFO to print the sensors data and the dominant color.
 */
-void put_sensor_data_to_print_mail(mail_t *mail_data_sens){
+/*void put_sensor_data_to_print_mail(mail_t *mail_data_sens){
 	
 		mail_t *mail_data_print = print_mail_box.try_calloc();
 		//Temp
@@ -340,7 +348,7 @@ void put_sensor_data_to_print_mail(mail_t *mail_data_sens){
 		print_mail_box.put(mail_data_print);
 		event_flags.set(EV_FLAG_PRINT_INFO);	
 }
-
+*/
 /**
 * Function put_log_sensor_data_to_print_mail_logs
 * @param Log log_values Stores teh max, min, avg values of recorded measurements
@@ -348,7 +356,7 @@ void put_sensor_data_to_print_mail(mail_t *mail_data_sens){
 * Description:  Gets the log values of the main thread and dominant color of that hour and put them in on print mailbox
 * Finally, it activates event flag EV_FLAG_PRINT_INFO_LOGS to print the log.
 */
-void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_color){
+/*void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_color){
 	
 		mail_t_logs *mail_data_print = print_logs_mail_box.try_calloc();
 		//Temp
@@ -379,7 +387,7 @@ void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_c
 																																				
 		print_logs_mail_box.put(mail_data_print);
 		event_flags.set(EV_FLAG_PRINT_INFO_LOGS);	
-}
+}*/
 /** 
 * Function put_sensor_data_to_print_mail_advanced
 * @param PlantOrientationLog advancedLog, mail_t * mail_data_sens, PlantEvents * plantEvents 
@@ -388,7 +396,7 @@ void put_log_sensor_data_to_print_mail_logs(Log log_hour_values, char dominant_c
 * Finally, it activates event flag EV_FLAG_PRINT_INFO_ADVANCED to print the ADVANCED mode data.
 */
 
-void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantEvents* plantEvents){
+/*void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, mail_t *mail_data_sens, PlantEvents* plantEvents){
 	
 		mail_t_advanced *mail_data_print_advanced = print_mail_box_advanced.try_calloc();
 		//Temp
@@ -418,11 +426,11 @@ void put_sensor_data_to_print_mail_advanced(PlantOrientationLog * advancedLog, m
 		
 		print_mail_box_advanced.put(mail_data_print_advanced);
 		event_flags.set(EV_FLAG_PRINT_INFO_ADVANCED);	
-}
+}*/
 /*
  * Converts the 'R','G','B' or 'N' char to strings to later print the dominant color in serial
  */
-char const* get_str_dominant_color(char dominant_color){
+/*char const* get_str_dominant_color(char dominant_color){
 	char const *color_dominant_detected;
 	if(dominant_color == 'R'){
 		color_dominant_detected = "RED";
@@ -437,7 +445,7 @@ char const* get_str_dominant_color(char dominant_color){
 		color_dominant_detected = "NONE";
 	}
 	return color_dominant_detected;
-}
+}*/
 
 
 ///////////////////////////////////////////////////////////////////////////////////
@@ -452,7 +460,7 @@ char const* get_str_dominant_color(char dominant_color){
 * Normal - 30s
 * Advanced - 2s
 */
-void measure_sensors(void){
+/*void measure_sensors(void){
 	//Init
 	if(!tempHumSensor.check()){
 			serial_mutex.lock();
@@ -477,7 +485,7 @@ void measure_sensors(void){
 			ThisThread::sleep_for(SENSORS_READ_CADENCY_ADVANCED);
 		}	
 	}
-}
+}*/
 
 ///////////////////////////////////////////////////////////////////////////////////
 //OUTPUT THREAD 
@@ -491,7 +499,7 @@ void measure_sensors(void){
 * Additionaly, if it receives EV_FLAG_PRINT_INFO_ADVANCED, retrieves from print_mail_box_advanced the values to print in ADVANCED mode
 * 
 */ 
-void GPS_and_print_info_system(void){
+/*void GPS_and_print_info_system(void){
 	uint32_t flags_read_serial_th;
 	//Init GPS
 	GPS_sensor.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); //these commands are defined in MBed_Adafruit_GPS.h; a link is provided there for command creation
@@ -580,3 +588,57 @@ void GPS_and_print_info_system(void){
 		}
 	}	
 }
+*/
+/*bool gps_fill_flag=false;
+void gps_ticker(void){
+	gps_fill_flag=true;
+}
+void read_GPS(void){
+	GPS_send_Ticker.attach_us(&gps_ticker,1000000);
+	//Init GPS
+	GPS_sensor.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); //these commands are defined in MBed_Adafruit_GPS.h; a link is provided there for command creation
+  GPS_sensor.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+  //GPS_sensor.sendCommand(PGCMD_ANTENNA);
+  
+	while(true){
+		//GPS
+		char c = GPS_sensor.read();
+		//If a NMEA message is received
+		if (GPS_sensor.newNMEAreceived()) {
+			if (!GPS_sensor.parse(GPS_sensor.lastNMEA())){  // this also sets the newNMEAreceived() flag to false
+			// we can fail to parse a sentence in which case we should just wait for another
+					;
+			}
+		}
+		if(gps_fill_flag){
+			gps_fill_flag=false;
+				mail_t_gps *mail_data_gps = gps_mail_box.try_calloc();
+
+			
+			//Modify hour to Madrid latitude
+			uint8_t local_time_hour = GPS_sensor.hour + 1; //UTC+1 (Madrid Winter time)
+			if(local_time_hour > 23) local_time_hour = 0;
+			
+			mail_data_gps->latitude = GPS_sensor.latitude/100;
+			mail_data_gps->longitude = GPS_sensor.longitude/100;
+			mail_data_gps->local_time_hour = local_time_hour;
+			mail_data_gps->minute = GPS_sensor.minute;
+			mail_data_gps->seconds = GPS_sensor.seconds;
+				
+			//serial_mutex.lock();
+			//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
+			//	GPS_sensor.longitude/100,GPS_sensor.altitude,local_time_hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
+			//serial_mutex.unlock();
+			gps_mail_box.put(mail_data_gps);
+			event_flags.set(EV_FLAG_READ_GPS);	
+				
+				
+			
+		//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
+		//		GPS_sensor.longitude/100,GPS_sensor.altitude,GPS_sensor.hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
+			
+		//Reads if there is anything to print
+				
+		}
+	}
+}*/
