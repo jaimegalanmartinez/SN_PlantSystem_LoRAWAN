@@ -1,6 +1,6 @@
 {
     "config": {
-        "main_stack_size":     { "value": 4096 }
+        "main_stack_size":     { "value": 2048 }
     },
     "target_overrides": {
         "*": {
@@ -49,7 +49,7 @@
         },
 
         "DISCO_L072CZ_LRWAN1": {
-            "main_stack_size":      1024
+            "main_stack_size":      2048
         },
 
         "NUCLEO_WL55JC": {

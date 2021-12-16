@@ -53,7 +53,7 @@
           <CreateExecutable>1</CreateExecutable>
           <CreateLib>0</CreateLib>
           <CreateHexFile>0</CreateHexFile>
-          <DebugInformation>1</DebugInformation>
+          <DebugInformation>0</DebugInformation>
           <BrowseInformation>1</BrowseInformation>
           <ListingPath>.\BUILD\</ListingPath>
           <HexFormatSelection>1</HexFormatSelection>
@@ -457,6 +457,16 @@
               <FileName>functions.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\functions.h</FilePath>
+            </File>
+            <File>
+              <FileName>RTOSerrstr.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\RTOSerrstr.h</FilePath>
+            </File>
+            <File>
+              <FileName>RTOSerrstr.cpp</FileName>
+              <FileType>8</FileType>
+              <FilePath>.\RTOSerrstr.cpp</FilePath>
             </File>
           </Files>
         </Group>

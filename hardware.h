@@ -20,5 +20,5 @@ extern InterruptIn button, accel_interruptTap;
 extern AnalogIn moistureSensor, lightSensor;
 extern BusOut RGB_LED;
 extern Ticker halfHourTicker;
-
+extern Ticker GPS_send_Ticker;
 #endif
