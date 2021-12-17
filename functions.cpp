@@ -47,6 +47,12 @@ void user_button()
 void ISR_accelTap(){
 	is_accel_interruptTap = true;
 }
+
+short int convertMeasureFloatToShort(float valueF){
+	short int value;
+	value = valueF * 100.0;
+	return value;
+}
 /*
 void state_machine(void) {
 	Log log_values;//Global instance of the struct
@@ -241,7 +247,7 @@ void state_machine(void) {
 * @param int rgb_readings[4]
 *	@return dominant_color ('R'= red, 'G'= green, 'B' = blue, 'N' = none)
 */
-/*char set_dominant_color(int rgb_readings[4]){
+char set_dominant_color(int rgb_readings[4]){
 	char dominant_color = 'N';
 	if(rgb_readings[1]>rgb_readings[2] && rgb_readings[1]>=rgb_readings[3]){//If max=RED
 		dominant_color='R'; //red
@@ -256,7 +262,7 @@ void state_machine(void) {
 		dominant_color='N'; //nothing
 	}
 	return dominant_color;
-}*/
+}
 /**
 * With the dominant color we set the RGB led color
 *

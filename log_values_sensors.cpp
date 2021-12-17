@@ -8,7 +8,7 @@
 /*
 Initialize the log_values variable 
 */
-void initLog(Log *log_values){
+/*void initLog(Log *log_values){
 	log_values->temperature_max = -60;
 	log_values->temperature_min = 200;
 	log_values->temperature_avg = 0;
@@ -42,10 +42,11 @@ void initLog(Log *log_values){
 	
 	log_values->num_samples_measures = 0;
 }
-
+*/
 /*
 Updates the log_values variable with the new values recorded
 */
+/*
 void updateLog(Log *log_values,float temperature, float humidity, float light, float moisture, char dominant_color, float accel_values[]){
 	if(log_values->temperature_max < temperature)
 		log_values->temperature_max = temperature;
@@ -95,10 +96,11 @@ void updateLog(Log *log_values,float temperature, float humidity, float light, f
 		log_values->accel_z_min = accel_values[2];
 	
 }
-
+*/
 /**
 * Calculate average sensors data
 */
+/*
 void calculate_average_sensors_data(Log *log_values){
 	log_values->temperature_avg = log_values->temperature_sum / log_values->num_samples_measures;
 	log_values->humidity_avg = log_values->humidity_sum / log_values->num_samples_measures;
@@ -106,9 +108,11 @@ void calculate_average_sensors_data(Log *log_values){
 	log_values->moisture_avg = log_values->moisture_sum / log_values->num_samples_measures;
 
 }
+*/
 /**
 * Calculate dominant color from  logs colors count
 */
+/*
 char calculate_dominant_color_from_logs(Log log_values){
 	char dominant_color_final = 'N';
 	if(log_values.count_color_red>log_values.count_color_green && log_values.count_color_red> log_values.count_color_blue)
@@ -123,3 +127,4 @@ char calculate_dominant_color_from_logs(Log log_values){
 	return dominant_color_final;
 	
 }
+*/

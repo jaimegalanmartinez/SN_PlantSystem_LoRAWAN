@@ -13,7 +13,7 @@ typedef struct {
 	uint8_t count_plant_freefalls;
 } PlantEvents;
 
-typedef struct {
+/*typedef struct {
 		float temperature;
 		float humidity;
 		float light;
@@ -24,7 +24,7 @@ typedef struct {
 		uint8_t count_plant_falls;
 		PlantEvents plantEvents;
 } mail_t_advanced;
-
+*/
 enum PlantOrientation{UP,DOWN};
 
 typedef struct {

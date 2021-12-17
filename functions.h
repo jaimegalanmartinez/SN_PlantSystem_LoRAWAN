@@ -137,7 +137,7 @@ void ISR_accelTap();
 * @param int rgb_readings[4]
 *	@return dominant_color ('R'= red, 'G'= green, 'B' = blue, 'N' = none)
 */
-//char set_dominant_color(int rgb_readings[4]);
+char set_dominant_color(int rgb_readings[4]);
 
 /**
 * With the dominant color we set the RGB led color

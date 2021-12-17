@@ -2,7 +2,7 @@
 
 #ifndef _LOG_VALUES_SENSORS_H_
 #define _LOG_VALUES_SENSORS_H_
-
+/*
 //Struct that stores all previous values in 1 hour to be processed later.
 struct Log{
 	//Temp
@@ -39,22 +39,22 @@ struct Log{
 	//Num samples
 	uint16_t num_samples_measures;
 };
-
+*/
 /*
 Initialize the log_values variable 
 */
-void initLog(Log *log_values);
+//void initLog(Log *log_values);
 /*
 Updates the log_values variable with the new values recorded
 */
-void updateLog(Log *log_values,float temperature, float humidity, float light, float moisture, char dominant_color, float accel_values[]);
+//void updateLog(Log *log_values,float temperature, float humidity, float light, float moisture, char dominant_color, float accel_values[]);
 /**
 * Calculate average sensors data
 */
-void calculate_average_sensors_data(Log *log_values);
+//void calculate_average_sensors_data(Log *log_values);
 /**
 * Calculate dominant color from  logs colors count
 */
-char calculate_dominant_color_from_logs(Log log_values);
+//char calculate_dominant_color_from_logs(Log log_values);
 
 #endif
