@@ -98,7 +98,7 @@ static lorawan_app_callbacks_t callbacks;
 
 // Jaime Galan   DEV_EUI = {0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group J
 // Victor Aranda DEV_EUI = {0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group C
-static uint8_t DEV_EUI[] = { 0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
+static uint8_t DEV_EUI[] = { 0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
 static uint8_t APP_EUI[] = { 0x70, 0xb3, 0xd5, 0x7e, 0xd0, 0x00, 0xfc, 0xda };
 //Same value for sw application receiving the information
 static uint8_t APP_KEY[] = { 0xf3,0x1c,0x2e,0x8b,0xc6,0x71,0x28,0x1d,0x51,0x16,0xf0,0x8f,0xf0,0xb7,0x92,0x8f };
@@ -108,9 +108,19 @@ static uint8_t APP_KEY[] = { 0xf3,0x1c,0x2e,0x8b,0xc6,0x71,0x28,0x1d,0x51,0x16,0
 
 
 int main(void)
-{		
+{	
+	/*state_machine_thread.start(&state_machine);
+		osStatus err = state_machine_thread.start(callback(state_machine));
+		 if (err) { 
+				printf("\r\n Error %s\r\n",getOsStatusStr(err));
+		 }*/
+		/*osStatus err = output_thread.start(callback(read_GPS));
+		if (err) { 
+				printf("\r\n Error %s\r\n",getOsStatusStr(err));
+		 }
+		*/
 	initAdvancedMode();
-		
+	
     // setup tracing
     setup_trace();
 
@@ -163,15 +173,7 @@ int main(void)
     }
 
     printf("\r\n Connection - In Progress ...\r\n");
-		/*state_machine_thread.start(&state_machine);
-		osStatus err = state_machine_thread.start(callback(state_machine));
-		 if (err) { 
-				printf("\r\n Error %s\r\n",getOsStatusStr(err));
-		 }*/
-		/*osStatus err = output_thread.start(callback(read_GPS));
-		if (err) { 
-				printf("\r\n Error %s\r\n",getOsStatusStr(err));
-		 }*/
+		
     // make your event queue dispatching events forever
     ev_queue.dispatch_forever();
 
@@ -185,24 +187,15 @@ static void send_message()
 {
     uint16_t packet_len;
     int16_t retcode;
-    int32_t sensor_value;
-
-    /*if (ds1820.begin()) {
-        ds1820.startConversion();
-        sensor_value = ds1820.read();
-        printf("\r\n Dummy Sensor Value = %d \r\n", sensor_value);
-        ds1820.startConversion();
-    } else {
-        printf("\r\n No sensor found \r\n");
-        return;
-    }*/
-        //Default values to send
+	
+    //Default values to send
 		float temp = 25.2; //0x 41 c9 99 9a - in buffer -> 9A99 C941
 		float humidity = 45.2; //0x4234cccd -> CDCC 3442
 		float light = 10.2; //0x41233333
 		float moisture = 32.1; //0x42006666
 		float accel_values [3];
 		int rgb_readings[4];
+	  char dominantColor = 'G';
 		float latitude = 40.3903; //0x42218fab
 		float longitude = -3.62702; //0xc0682118
 		uint8_t hour = 11;
@@ -220,7 +213,7 @@ static void send_message()
 		moisture = moistureSensor.read_u16()*100.0/65536.0;
 		//Colour sensor
 		rgb_sensor.getAllColors(rgb_readings); // read the sensor to get red, green, and blue color data along with overall brightness
-		char dominantColor = set_dominant_color(rgb_readings); //in hex -> 'N' = 4E , 'R' = 52 , 'G' = 47 , 'B' = 42
+		dominantColor = set_dominant_color(rgb_readings); //in hex -> 'N' = 4E , 'R' = 52 , 'G' = 47 , 'B' = 42
 		//Accelerometer
 		accel_sensor.getAccAllAxis(accel_values);
 		//accel_values[0] = 0.0087890625; //X
@@ -233,12 +226,11 @@ static void send_message()
 		unsigned short int lightI = light * 100; //1020 			-> 0x03FC -in buffer -> FC03
 		unsigned short int moistureI = moisture * 100.0; //3209 -> 0x0C89 -in buffer -> 890C
 		
-		//char dominantColor = 'G';
 		short int accel_x = accel_values[0] * -1000; // 0.0087890625 -> 8
 		short int accel_y = accel_values[1] * -1000; // 0.125488281  -> 125
 		short int accel_z = accel_values[2] * -1000; // 1.0078125    -> 1007
 		//Advanced mode values
-        //Count plant falls
+    //Count plant falls
 		updatePlantOrientation(&plantLog, accel_values);
 		//Count single taps
 		if(is_accel_interruptTap) { //Single Tap
@@ -286,17 +278,17 @@ static void send_message()
                 }	//else
             } //if GPS NMEA received
         } //while GPS
-		/*
-		uint32_t flags_read_gps_th = event_flags.wait_any(EV_FLAG_READ_GPS,0);//Wait for flag to send the information
+		
+		/*uint32_t flags_read_gps_th = event_flags.wait_any(EV_FLAG_READ_GPS,0);//Wait for flag to send the information
 		
 		if(flags_read_gps_th == EV_FLAG_READ_GPS){
 			mail_t_gps *mail_data_gps = (mail_t_gps *) gps_mail_box.try_get();//Get sensors value
-			latitude= mail_data_gps->latitude;
-			longitude=mail_data_gps->longitude;
+			latitude = mail_data_gps->latitude;
+			longitude = mail_data_gps->longitude;
 			gps_mail_box.free(mail_data_gps);
 			event_flags.clear(EV_FLAG_READ_GPS);
-		}*/
-
+		}
+		*/
         //Summary
 		printf("Temp: %d, Hum: %u, Light: %u, Moisture: %u, Dominant colour: %c\n", tempI, humidityI, lightI, moistureI, dominantColor);
 		printf("AccelS X: %d AccelS Y: %d, AccelS Z: %d\n", accel_x, accel_y, accel_z);
@@ -314,43 +306,8 @@ static void send_message()
 		//       GPS: Latitude (4bytes), Longitude (4bytes) //8 bytes
 		//       GPS: Hour (1 byte), Minutes (1 byte), Day (1 byte) Month (1 byte) //4 bytes
 		//FRAME BUFFER TX: D809 A811 FC03 890C 47 0800 7D00 EF03 00 00 00 AB8F2142 182168C0 0B 19 11 0c //30 bytes
-		
-		memcpy(tx_buffer, &tempI, sizeof(short int));
-		packet_len = (sizeof(short int));
-		memcpy(tx_buffer + packet_len, &humidityI, sizeof(short int));
-		packet_len += (sizeof(short int));
-		memcpy(tx_buffer + packet_len, &lightI, sizeof(short int));
-		packet_len += (sizeof(short int));
-		memcpy(tx_buffer + packet_len, &moistureI, sizeof(short int));
-		packet_len += (sizeof(short int));
-		memcpy(tx_buffer + packet_len, &dominantColor, sizeof(char));
-		packet_len += (sizeof(char));
-		memcpy(tx_buffer + packet_len, &accel_x, sizeof(short int));
-		packet_len += (sizeof(short int));
-		memcpy(tx_buffer + packet_len, &accel_y, sizeof(short int));
-		packet_len += (sizeof(short int));
-		memcpy(tx_buffer + packet_len, &accel_z, sizeof(short int));
-		packet_len += (sizeof(short int));
-		//Accelerometer advanced
-		memcpy(tx_buffer + packet_len, &plantLog.count_plant_falls, sizeof(uint8_t));
-		packet_len += (sizeof(uint8_t));
-		memcpy(tx_buffer + packet_len, &plantEvents.count_plant_freefalls, sizeof(uint8_t));
-		packet_len += (sizeof(uint8_t));
-		memcpy(tx_buffer + packet_len, &plantEvents.count_single_taps, sizeof(uint8_t));
-		packet_len += (sizeof(uint8_t));
-		//GPS
-		memcpy(tx_buffer + packet_len, &latitude, sizeof(float));
-		packet_len += (sizeof(float));
-		memcpy(tx_buffer + packet_len, &longitude, sizeof(float));
-		packet_len += (sizeof(float));
-		memcpy(tx_buffer + packet_len, &hour, sizeof(uint8_t));
-		packet_len += (sizeof(uint8_t));
-		memcpy(tx_buffer + packet_len, &minutes, sizeof(uint8_t));
-		packet_len += (sizeof(uint8_t));
-		memcpy(tx_buffer + packet_len, &day, sizeof(uint8_t));
-		packet_len += (sizeof(uint8_t));
-		memcpy(tx_buffer + packet_len, &month, sizeof(uint8_t));
-		packet_len += (sizeof(uint8_t));
+		packet_len = writeFrameInBuffer(tx_buffer, tempI, humidityI, lightI, moistureI, dominantColor, accel_x, accel_y, accel_z,
+																		plantLog, plantEvents, latitude, longitude, hour, minutes, day, month);
 		
 		//PRINT FRAME TO SEND 
 		for(uint8_t i = 0; i < sizeof(tx_buffer); i ++){

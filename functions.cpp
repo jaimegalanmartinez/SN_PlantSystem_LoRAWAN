@@ -15,11 +15,11 @@ Mode mode = TEST;
 //Mail<mail_t_logs, MAIL_QUEUE_SIZE> print_logs_mail_box;
 //Mailbox for communicate sensor_data, plant orientation and plant events to the main thread with the output thread in advanced mode
 //Mail<mail_t_advanced, MAIL_QUEUE_SIZE> print_mail_box_advanced;
-//Mialbox to communicate the output htread that has all measurements to the send_message function that is executed periodicaly to sent them to LoRaWAN
+//Mailbox to communicate the output thread that has all GPS data to the send_message function that is executed periodicaly to sent them to LoRaWAN
 //Mail<mail_t_gps, MAIL_QUEUE_SIZE> gps_mail_box;
 //Threads
 //Thread measure_thread(osPriorityNormal, STACK_SIZE_MEASURE_THREAD, nullptr, nullptr);//Measures all elements except the GPS
-Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
+//Thread output_thread(osPriorityNormal,STACK_SIZE_OUTPUT_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
 //Thread output_thread(osPriorityNormal,STACK_SIZE_STATE_MACHINE_THREAD,nullptr,nullptr);//Prints the relevant data to the serial port (printf) and controls also the GPS
 
 EventFlags event_flags;
@@ -65,6 +65,132 @@ void initAdvancedMode(void){
     accel_sensor.initFreeFall();
     accel_interruptTap.rise(&ISR_accelTap);
 }
+
+uint16_t writeFrameInBuffer(uint8_t buffer[30], short int temp, unsigned short humidity, unsigned short light,unsigned short moisture,
+	char dominantColor, short int accel_x, short int accel_y, short int accel_z, PlantOrientationLog plantLog, PlantEvents plantEvents, 
+	float latitude, float longitude, uint8_t hour, uint8_t minutes, uint8_t day, uint8_t month){
+		
+	uint16_t packet_len;
+	
+	memcpy(buffer, &temp, sizeof(short int));
+	packet_len = (sizeof(short int));
+	memcpy(buffer + packet_len, &humidity, sizeof(short int));
+	packet_len += (sizeof(short int));
+	memcpy(buffer + packet_len, &light, sizeof(short int));
+	packet_len += (sizeof(short int));
+	memcpy(buffer + packet_len, &moisture, sizeof(short int));
+	packet_len += (sizeof(short int));
+	memcpy(buffer + packet_len, &dominantColor, sizeof(char));
+	packet_len += (sizeof(char));
+	memcpy(buffer + packet_len, &accel_x, sizeof(short int));
+	packet_len += (sizeof(short int));
+	memcpy(buffer + packet_len, &accel_y, sizeof(short int));
+	packet_len += (sizeof(short int));
+	memcpy(buffer + packet_len, &accel_z, sizeof(short int));
+	packet_len += (sizeof(short int));
+	//Accelerometer advanced
+	memcpy(buffer + packet_len, &plantLog.count_plant_falls, sizeof(uint8_t));
+	packet_len += (sizeof(uint8_t));
+	memcpy(buffer + packet_len, &plantEvents.count_plant_freefalls, sizeof(uint8_t));
+	packet_len += (sizeof(uint8_t));
+	memcpy(buffer + packet_len, &plantEvents.count_single_taps, sizeof(uint8_t));
+	packet_len += (sizeof(uint8_t));
+	//GPS
+	memcpy(buffer + packet_len, &latitude, sizeof(float));
+	packet_len += (sizeof(float));
+	memcpy(buffer + packet_len, &longitude, sizeof(float));
+	packet_len += (sizeof(float));
+	memcpy(buffer + packet_len, &hour, sizeof(uint8_t));
+	packet_len += (sizeof(uint8_t));
+	memcpy(buffer + packet_len, &minutes, sizeof(uint8_t));
+	packet_len += (sizeof(uint8_t));
+	memcpy(buffer + packet_len, &day, sizeof(uint8_t));
+	packet_len += (sizeof(uint8_t));
+	memcpy(buffer + packet_len, &month, sizeof(uint8_t));
+	packet_len += (sizeof(uint8_t));
+	
+	return packet_len;
+}
+	
+/**
+* Set the dominant color of the plant based on the readings provided by the color sensor
+* @param int rgb_readings[4]
+*	@return dominant_color ('R'= red, 'G'= green, 'B' = blue, 'N' = none)
+*/
+char set_dominant_color(int rgb_readings[4]){
+	char dominant_color = 'N';
+	if(rgb_readings[1]>rgb_readings[2] && rgb_readings[1]>=rgb_readings[3]){//If max=RED
+		dominant_color='R'; //red
+		
+	}else if(rgb_readings[2]>rgb_readings[1] && rgb_readings[2]>rgb_readings[3]){//If max=Green
+		dominant_color='G'; //green
+		
+	}else if(rgb_readings[3]>rgb_readings[1] && rgb_readings[3]>rgb_readings[2]){//If max=Blue
+		dominant_color='B';	//blue	
+		
+	}else{
+		dominant_color='N'; //nothing
+	}
+	return dominant_color;
+}
+
+/*
+bool gps_fill_flag=false;
+void gps_ticker(void){
+	gps_fill_flag=true;
+}
+
+void read_GPS(void){
+	
+	//Init GPS
+	GPS_sensor.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); //these commands are defined in MBed_Adafruit_GPS.h; a link is provided there for command creation
+  GPS_sensor.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
+  //GPS_sensor.sendCommand(PGCMD_ANTENNA);
+  GPS_send_Ticker.attach_us(&gps_ticker,1000000); //each second
+	while(true){
+		//GPS
+		char c = GPS_sensor.read();
+		//If a NMEA message is received
+		if (GPS_sensor.newNMEAreceived()) {
+			if (!GPS_sensor.parse(GPS_sensor.lastNMEA())){  // this also sets the newNMEAreceived() flag to false
+			// we can fail to parse a sentence in which case we should just wait for another
+					;
+			}
+		}
+		if(gps_fill_flag){
+			gps_fill_flag=false;
+				mail_t_gps *mail_data_gps = gps_mail_box.try_calloc();
+
+			
+			//Modify hour to Madrid latitude
+			uint8_t local_time_hour = GPS_sensor.hour + 1; //UTC+1 (Madrid Winter time)
+			if(local_time_hour > 23) local_time_hour = 0;
+			
+			mail_data_gps->latitude = GPS_sensor.latitude/100;
+			mail_data_gps->longitude = GPS_sensor.longitude/100;
+			mail_data_gps->local_time_hour = local_time_hour;
+			mail_data_gps->minute = GPS_sensor.minute;
+			mail_data_gps->day = GPS_sensor.day;
+			mail_data_gps->month = GPS_sensor.month;
+				
+			//serial_mutex.lock();
+			//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
+			//	GPS_sensor.longitude/100,GPS_sensor.altitude,local_time_hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
+			//serial_mutex.unlock();
+			gps_mail_box.put(mail_data_gps);
+			event_flags.set(EV_FLAG_READ_GPS);	
+				
+				
+			
+		//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
+		//		GPS_sensor.longitude/100,GPS_sensor.altitude,GPS_sensor.hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
+			
+		//Reads if there is anything to print
+				
+		}
+	}
+}
+*/
 /*
 void state_machine(void) {
 	Log log_values;//Global instance of the struct
@@ -254,27 +380,7 @@ void state_machine(void) {
 		RGB_LED=0b010;
 	}
 }*/
-/**
-* Set the dominant color of the plant based on the readings provided by the color sensor
-* @param int rgb_readings[4]
-*	@return dominant_color ('R'= red, 'G'= green, 'B' = blue, 'N' = none)
-*/
-char set_dominant_color(int rgb_readings[4]){
-	char dominant_color = 'N';
-	if(rgb_readings[1]>rgb_readings[2] && rgb_readings[1]>=rgb_readings[3]){//If max=RED
-		dominant_color='R'; //red
-		
-	}else if(rgb_readings[2]>rgb_readings[1] && rgb_readings[2]>rgb_readings[3]){//If max=Green
-		dominant_color='G'; //green
-		
-	}else if(rgb_readings[3]>rgb_readings[1] && rgb_readings[3]>rgb_readings[2]){//If max=Blue
-		dominant_color='B';	//blue	
-		
-	}else{
-		dominant_color='N'; //nothing
-	}
-	return dominant_color;
-}
+
 /**
 * With the dominant color we set the RGB led color
 *
@@ -607,56 +713,3 @@ char set_dominant_color(int rgb_readings[4]){
 	}	
 }
 */
-/*bool gps_fill_flag=false;
-void gps_ticker(void){
-	gps_fill_flag=true;
-}
-void read_GPS(void){
-	GPS_send_Ticker.attach_us(&gps_ticker,1000000);
-	//Init GPS
-	GPS_sensor.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); //these commands are defined in MBed_Adafruit_GPS.h; a link is provided there for command creation
-  GPS_sensor.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ);
-  //GPS_sensor.sendCommand(PGCMD_ANTENNA);
-  
-	while(true){
-		//GPS
-		char c = GPS_sensor.read();
-		//If a NMEA message is received
-		if (GPS_sensor.newNMEAreceived()) {
-			if (!GPS_sensor.parse(GPS_sensor.lastNMEA())){  // this also sets the newNMEAreceived() flag to false
-			// we can fail to parse a sentence in which case we should just wait for another
-					;
-			}
-		}
-		if(gps_fill_flag){
-			gps_fill_flag=false;
-				mail_t_gps *mail_data_gps = gps_mail_box.try_calloc();
-
-			
-			//Modify hour to Madrid latitude
-			uint8_t local_time_hour = GPS_sensor.hour + 1; //UTC+1 (Madrid Winter time)
-			if(local_time_hour > 23) local_time_hour = 0;
-			
-			mail_data_gps->latitude = GPS_sensor.latitude/100;
-			mail_data_gps->longitude = GPS_sensor.longitude/100;
-			mail_data_gps->local_time_hour = local_time_hour;
-			mail_data_gps->minute = GPS_sensor.minute;
-			mail_data_gps->seconds = GPS_sensor.seconds;
-				
-			//serial_mutex.lock();
-			//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
-			//	GPS_sensor.longitude/100,GPS_sensor.altitude,local_time_hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
-			//serial_mutex.unlock();
-			gps_mail_box.put(mail_data_gps);
-			event_flags.set(EV_FLAG_READ_GPS);	
-				
-				
-			
-		//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
-		//		GPS_sensor.longitude/100,GPS_sensor.altitude,GPS_sensor.hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
-			
-		//Reads if there is anything to print
-				
-		}
-	}
-}*/

@@ -26,7 +26,7 @@
 #define SENSORS_READ_CADENCY_NORMAL 30000ms //30000ms (30s) normal operation, Testing = 2000ms
 #define SENSORS_READ_CADENCY_ADVANCED 2000ms */
 //Stack size for threads
-#define STACK_SIZE_OUTPUT_THREAD 1500
+#define STACK_SIZE_OUTPUT_THREAD 1024
 //#define STACK_SIZE_MEASURE_THREAD 512
 //#define STACK_SIZE_STATE_MACHINE_THREAD 4096
 
@@ -66,15 +66,15 @@
  * Structure to send the measured values and the GPS to the send_message thread so that 
  * they are senit to LoRaWAN.
  */
- /*typedef struct {
+typedef struct {
 		float latitude;
 		float longitude;
-		float altitude;
 		uint8_t local_time_hour;
 		uint8_t minute;
-		uint8_t seconds;
+		uint8_t day;
+		uint8_t month;
 } mail_t_gps;
- */
+
 /*extern Mail<mail_t, MAIL_QUEUE_SIZE> sensor_data_mail_box, print_mail_box;
 extern Mail<mail_t_logs, MAIL_QUEUE_SIZE> print_logs_mail_box;
 extern Mail<mail_t_advanced, MAIL_QUEUE_SIZE> print_mail_box_advanced;*/
@@ -83,7 +83,7 @@ extern EventFlags event_flags;
 
 //Threads
 //extern Thread measure_thread;//Measures all elements except the GPS
-extern Thread output_thread;//Prints the relevant data to the serial port (printf) and controls also the GPS
+//extern Thread output_thread;//Prints the relevant data to the serial port (printf) and controls also the GPS
 //extern Thread state_machine_thread;//Prints the relevant data to the serial port (printf) and controls also the GPS
 
 
@@ -112,8 +112,30 @@ Initializes everything regarding advanced mode:
     Configures the SingleTap, Freefall, and interruption of accelerometer.
 */
 void initAdvancedMode(void);
+/** Function checkRange_and_set_RGB_color
+	@description Write frame with sensor values, accelerometer advanced parameters and GPS location, GPS time and date.
+	//FRAME: Temp (2bytes), Humidity (2bytes), Light (2bytes), Moisture (2bytes),  //8 bytes
+		//			 Dominant colour (1 byte),AccelX(2 bytes), AccelY (2 bytes), AccelZ (2 bytes), // 7 bytes
+		//			 Count plant falls (1 byte), Freefalls (1 byte), Single Taps (1 byte) //3 bytes
+		//       GPS: Latitude (4bytes), Longitude (4bytes) //8 bytes
+		//       GPS: Hour (1 byte), Minutes (1 byte), Day (1 byte) Month (1 byte) //4 bytes
+	@params temperature, humidity, light, moisture, dominantColor, accel_x, accel_y, accel_z, plantLog, plantEvents, latitude, longitude, hour, minutes, day, month
+
+**/
+uint16_t writeFrameInBuffer(uint8_t buffer[30], short int temp, unsigned short humidity, unsigned short light,unsigned short moisture,
+	char dominantColor, short int accel_x, short int accel_y, short int accel_z, PlantOrientationLog plantLog, PlantEvents plantEvents, 
+	float latitude, float longitude, uint8_t hour, uint8_t minutes, uint8_t day, uint8_t month);
 
 
+/**
+* Set the dominant color of the plant based on the readings provided by the color sensor
+* @param int rgb_readings[4]
+*	@return dominant_color ('R'= red, 'G'= green, 'B' = blue, 'N' = none)
+*/
+char set_dominant_color(int rgb_readings[4]);
+
+void read_GPS();
+	
 //void state_machine(void);
 /** Function checkRange_and_set_RGB_color
 	@description Check sensor data ranges and set the RGB color.
@@ -144,13 +166,6 @@ void initAdvancedMode(void);
 	No errors: Green - Detecting plant
 */
 //void checkRange_and_set_RGB_color(float temperature,float humidity,float light_value_f,float moisture_value_f,float accel_values [],char dominantColor);
-
-/**
-* Set the dominant color of the plant based on the readings provided by the color sensor
-* @param int rgb_readings[4]
-*	@return dominant_color ('R'= red, 'G'= green, 'B' = blue, 'N' = none)
-*/
-char set_dominant_color(int rgb_readings[4]);
 
 /**
 * With the dominant color we set the RGB led color
@@ -221,5 +236,4 @@ char set_dominant_color(int rgb_readings[4]);
 */ 
 //void GPS_and_print_info_system(void);
 
-void read_GPS();
 #endif
