@@ -26,6 +26,7 @@ EventFlags event_flags;
 
 Mutex serial_mutex; //Mutex for serial communication
 
+
 /*
 * Interrupt Service Routine, ticker
 */
@@ -52,6 +53,17 @@ short int convertMeasureFloatToShort(float valueF){
 	short int value;
 	value = valueF * 100.0;
 	return value;
+}
+void initAdvancedMode(void){
+    //Accelerometer advanced
+    plantLog.count_plant_falls=0; //uint8_t
+    plantLog.previousState=UP;
+    //Accel interrupt INT1 (Single Tap)
+    plantEvents.count_single_taps = 0; //uint8_t
+    plantEvents.count_plant_freefalls = 0; //uint8_t
+    accel_sensor.setupSingleTap();
+    accel_sensor.initFreeFall();
+    accel_interruptTap.rise(&ISR_accelTap);
 }
 /*
 void state_machine(void) {

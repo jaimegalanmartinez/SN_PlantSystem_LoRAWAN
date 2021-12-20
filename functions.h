@@ -90,6 +90,11 @@ extern Thread output_thread;//Prints the relevant data to the serial port (print
 extern volatile bool user_button_flag;
 extern bool half_hour_flag, is_accel_interruptTap;
 
+//Structures for advanced mode
+static PlantOrientationLog plantLog;//Stores the status of the plant regarding the advanced mode
+static PlantEvents plantEvents;
+
+
 //Possible states of the state machine
 enum Mode{TEST,NORMAL,ADVANCED};
 /////////////////////////////////////////////
@@ -100,6 +105,14 @@ extern Mode mode;
 void half_hour_irq();
 void user_button();
 void ISR_accelTap();
+
+/**
+Initializes everything regarding advanced mode:
+    Initializes the plantLog and plantEvents structures.
+    Configures the SingleTap, Freefall, and interruption of accelerometer.
+*/
+void initAdvancedMode(void);
+
 
 //void state_machine(void);
 /** Function checkRange_and_set_RGB_color

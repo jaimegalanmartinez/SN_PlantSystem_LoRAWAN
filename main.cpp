@@ -98,7 +98,7 @@ static lorawan_app_callbacks_t callbacks;
 
 // Jaime Galan   DEV_EUI = {0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group J
 // Victor Aranda DEV_EUI = {0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group C
-static uint8_t DEV_EUI[] = { 0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
+static uint8_t DEV_EUI[] = { 0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
 static uint8_t APP_EUI[] = { 0x70, 0xb3, 0xd5, 0x7e, 0xd0, 0x00, 0xfc, 0xda };
 //Same value for sw application receiving the information
 static uint8_t APP_KEY[] = { 0xf3,0x1c,0x2e,0x8b,0xc6,0x71,0x28,0x1d,0x51,0x16,0xf0,0x8f,0xf0,0xb7,0x92,0x8f };
@@ -106,20 +106,10 @@ static uint8_t APP_KEY[] = { 0xf3,0x1c,0x2e,0x8b,0xc6,0x71,0x28,0x1d,0x51,0x16,0
  * Entry point for application
  */
 
-static PlantOrientationLog plantLog;//Stores the status of the plant regarding the advanced mode
-static PlantEvents plantEvents;
 
 int main(void)
 {		
-		//Accelerometer advanced
-		plantLog.count_plant_falls=0; //uint8_t
-		plantLog.previousState=UP;
-		//Accel interrupt INT1 (Single Tap)
-		plantEvents.count_single_taps = 0; //uint8_t
-		plantEvents.count_plant_freefalls = 0; //uint8_t
-		accel_sensor.setupSingleTap();
-		accel_sensor.initFreeFall();
-		accel_interruptTap.rise(&ISR_accelTap);
+	initAdvancedMode();
 		
     // setup tracing
     setup_trace();
@@ -206,20 +196,20 @@ static void send_message()
         printf("\r\n No sensor found \r\n");
         return;
     }*/
-	
+        //Default values to send
 		float temp = 25.2; //0x 41 c9 99 9a - in buffer -> 9A99 C941
 		float humidity = 45.2; //0x4234cccd -> CDCC 3442
 		float light = 10.2; //0x41233333
 		float moisture = 32.1; //0x42006666
 		float accel_values [3];
 		int rgb_readings[4];
-		//UPM campus sur library
 		float latitude = 40.3903; //0x42218fab
 		float longitude = -3.62702; //0xc0682118
 		uint8_t hour = 11;
 		uint8_t minutes = 25;
 		uint8_t day = 17;
 		uint8_t month = 12;
+        
 		//Temperature and humidity
 		tempHumSensor.get_data();
 		temp = tempHumSensor.get_temperature()/1000.0;//Value is multiplied by 1000
@@ -236,72 +226,66 @@ static void send_message()
 		//accel_values[0] = 0.0087890625; //X
 		//accel_values[1] = 0.125488281;  //Y
 		//accel_values[2] = 1.0078125;		//Z
-		
-		short int tempI = temp * 100; //2520 									-> 0x09D8 -in buffer -> D809
+
+		//Conversions to reduce the size of the data sent
+		short int tempI = temp * 100; //2520 		         -> 0x09D8 -in buffer -> D809
 		unsigned short int humidityI = humidity * 100; //4520 -> 0x11A8 -in buffer -> A811
 		unsigned short int lightI = light * 100; //1020 			-> 0x03FC -in buffer -> FC03
 		unsigned short int moistureI = moisture * 100.0; //3209 -> 0x0C89 -in buffer -> 890C
 		
 		//char dominantColor = 'G';
-		short int accel_x = accel_values[0] * 1000; // 0.0087890625 -> 8
-		short int accel_y = accel_values[1] * 1000; // 0.125488281  -> 125
-		short int accel_z = accel_values[2] * 1000; // 1.0078125    -> 1007
-		
+		short int accel_x = accel_values[0] * -1000; // 0.0087890625 -> 8
+		short int accel_y = accel_values[1] * -1000; // 0.125488281  -> 125
+		short int accel_z = accel_values[2] * -1000; // 1.0078125    -> 1007
+		//Advanced mode values
+        //Count plant falls
 		updatePlantOrientation(&plantLog, accel_values);
-		//Count plant falls
+		//Count single taps
 		if(is_accel_interruptTap) { //Single Tap
-							is_accel_interruptTap = false;
-							plantEvents.count_single_taps++;	
+            is_accel_interruptTap = false;
+            plantEvents.count_single_taps++;	
 		}
 		//Detects free fall by reading the FF_MT_SRC Source Register
 		if(accel_sensor.getFF()){
-							plantEvents.count_plant_freefalls++;
+			plantEvents.count_plant_freefalls++;
 		}
-		
+
+		//GPS
 		uint8_t read_gps_obtained = false;
 		while(!read_gps_obtained){
-		//GPS
-		char c = GPS_sensor.read();
-		//If a NMEA message is received
-		if (GPS_sensor.newNMEAreceived()) {
-			if (!GPS_sensor.parse(GPS_sensor.lastNMEA())){  // this also sets the newNMEAreceived() flag to false
-			// we can fail to parse a sentence in which case we should just wait for another
-					;
-			}else{
-				//mail_t_gps *mail_data_gps = gps_mail_box.try_calloc();
-
-			
-			//Modify hour to Madrid latitude
-			uint8_t local_time_hour = GPS_sensor.hour + 1; //UTC+1 (Madrid Winter time)
-			if(local_time_hour > 23) local_time_hour = 0;
-			
-			latitude = GPS_sensor.latitude/100;
-			longitude = GPS_sensor.longitude/100;
-			hour = local_time_hour;
-			minutes = GPS_sensor.minute;
-			day = GPS_sensor.day;
-			month = GPS_sensor.month;
-			//mail_data_gps->local_time_hour = local_time_hour;
-			//mail_data_gps->minute = GPS_sensor.minute;
-			//mail_data_gps->seconds = GPS_sensor.seconds;
-				
-			//serial_mutex.lock();
-			//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
-			//	GPS_sensor.longitude/100,GPS_sensor.altitude,local_time_hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
-			//serial_mutex.unlock();
-				read_gps_obtained=true;
-			//gps_mail_box.put(mail_data_gps);
-			//event_flags.set(EV_FLAG_READ_GPS);	
-				
-				
-			
-		//printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
-		//		GPS_sensor.longitude/100,GPS_sensor.altitude,GPS_sensor.hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
-			
-		//Reads if there is anything to print
-		}	//else
-		} //if GPS NMEA received
-	} //while GPS
+            char c = GPS_sensor.read();
+            //If a NMEA message is received
+            if (GPS_sensor.newNMEAreceived()) {
+                if (!GPS_sensor.parse(GPS_sensor.lastNMEA())){  // this also sets the newNMEAreceived() flag to false
+                // we can fail to parse a sentence in which case we should just wait for another
+                        ;
+                }else{
+                    //mail_t_gps *mail_data_gps = gps_mail_box.try_calloc();
+                    //Modify hour to Madrid latitude
+                    uint8_t local_time_hour = GPS_sensor.hour + 1; //UTC+1 (Madrid Winter time)
+                    if(local_time_hour > 23) local_time_hour = 0;
+                    
+                    latitude = GPS_sensor.latitude/100;
+                    longitude = GPS_sensor.longitude/100;
+                    hour = local_time_hour;
+                    minutes = GPS_sensor.minute;
+                    day = GPS_sensor.day;
+                    month = GPS_sensor.month;
+                    //mail_data_gps->local_time_hour = local_time_hour;
+                    //mail_data_gps->minute = GPS_sensor.minute;
+                    //mail_data_gps->seconds = GPS_sensor.seconds;
+                        
+                    //serial_mutex.lock();
+                    //printf("GPS: #Sats: %d, Lat(UTC): %f, Long(UTC): %f, Altitude: %.0fm, GPS_time: %d:%d:%d GPS_date: %d/%d/%d\n",GPS_sensor.satellites,GPS_sensor.latitude/100,
+                    //	GPS_sensor.longitude/100,GPS_sensor.altitude,local_time_hour,GPS_sensor.minute,GPS_sensor.seconds, GPS_sensor.day, GPS_sensor.month, GPS_sensor.year);
+                    //serial_mutex.unlock();
+                    read_gps_obtained=true;
+                    //gps_mail_box.put(mail_data_gps);
+                    //event_flags.set(EV_FLAG_READ_GPS);	
+                        
+                }	//else
+            } //if GPS NMEA received
+        } //while GPS
 		/*
 		uint32_t flags_read_gps_th = event_flags.wait_any(EV_FLAG_READ_GPS,0);//Wait for flag to send the information
 		
@@ -313,6 +297,7 @@ static void send_message()
 			event_flags.clear(EV_FLAG_READ_GPS);
 		}*/
 
+        //Summary
 		printf("Temp: %d, Hum: %u, Light: %u, Moisture: %u, Dominant colour: %c\n", tempI, humidityI, lightI, moistureI, dominantColor);
 		printf("AccelS X: %d AccelS Y: %d, AccelS Z: %d\n", accel_x, accel_y, accel_z);
 		printf("COUNT PLANT FALLS: %d\n",plantLog.count_plant_falls);
@@ -321,7 +306,7 @@ static void send_message()
 		printf("GPS: Lat(UTC): %d, Long(UTC): %d \n",(int)latitude,(int)longitude);
 		printf("Hour: %d:%d Date: %d/%d,\n", hour, minutes, day, month);
 		
-		
+		//Frame created
 		//41C9 999A 4234 CCCD 4123 3333 4200 6666 4221 8FAB C068 2118
 		//FRAME: Temp (2bytes), Humidity (2bytes), Light (2bytes), Moisture (2bytes),  //8 bytes
 		//			 Dominant colour (1byte),AccelX(2 bytes), AccelY (2bytes), AccelZ (2bytes), // 7 bytes
