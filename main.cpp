@@ -106,6 +106,7 @@ static uint8_t APP_KEY[] = { 0xf3,0x1c,0x2e,0x8b,0xc6,0x71,0x28,0x1d,0x51,0x16,0
 int main(void)
 {	
 	
+    
 	initAdvancedMode();
 	
     // setup tracing
@@ -217,6 +218,8 @@ static void send_message()
                 
                 latitude = GPS_sensor.latitude/100;
                 longitude = GPS_sensor.longitude/100;
+                if(GPS_sensor.lon =='W') longitude=longitude*-1.0;
+                if(GPS_sensor.lat =='S') latitude=latitude*-1.0;
                 hour = local_time_hour;
                 minutes = GPS_sensor.minute;
                 day = GPS_sensor.day;
