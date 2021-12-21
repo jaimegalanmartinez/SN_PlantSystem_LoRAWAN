@@ -60,7 +60,7 @@ uint8_t rx_buffer[30];
 /**
  * Dummy pin for dummy sensor
  */
-#define PC_9                            0
+//#define PC_9                            0
 
 /**
  * Dummy sensor class object
@@ -96,7 +96,7 @@ static lorawan_app_callbacks_t callbacks;
 
 // Jaime Galan   DEV_EUI = {0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group J
 // Victor Aranda DEV_EUI = {0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94} //Group C
-static uint8_t DEV_EUI[] = { 0x73, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
+static uint8_t DEV_EUI[] = { 0x7A, 0x39, 0x32, 0x35, 0x59, 0x37, 0x91, 0x94};
 static uint8_t APP_EUI[] = { 0x70, 0xb3, 0xd5, 0x7e, 0xd0, 0x00, 0xfc, 0xda };
 //Same value for sw application receiving the information
 static uint8_t APP_KEY[] = { 0xf3,0x1c,0x2e,0x8b,0xc6,0x71,0x28,0x1d,0x51,0x16,0xf0,0x8f,0xf0,0xb7,0x92,0x8f };
@@ -104,10 +104,8 @@ static uint8_t APP_KEY[] = { 0xf3,0x1c,0x2e,0x8b,0xc6,0x71,0x28,0x1d,0x51,0x16,0
  * Entry point for application
  */
 int main(void)
-{	
-	
-    
-	initAdvancedMode();
+{	 
+		initAdvancedMode();
 	
     // setup tracing
     setup_trace();
@@ -181,7 +179,7 @@ static void send_message()
     float humidity = 45.2; //0x4234cccd -> CDCC 3442
     float light = 10.2; //0x41233333
     float moisture = 32.1; //0x42006666
-    float accel_values [3]; //[0]=X, [1]=Y, [3]=Z
+    float accel_values [3]; //[0]=X, [1]=Y, [2]=Z
     int rgb_readings[4];
     char dominantColor = 'G';
     float latitude = 40.3903; //0x42218fab
@@ -263,7 +261,6 @@ static void send_message()
     printf("Hour: %d:%d Date: %d/%d,\n", hour, minutes, day, month);
     
     //Frame created
-    //41C9 999A 4234 CCCD 4123 3333 4200 6666 4221 8FAB C068 2118
     //FRAME: Temp (2bytes), Humidity (2bytes), Light (2bytes), Moisture (2bytes),  //8 bytes
     //			 Dominant colour (1byte),AccelX(2 bytes), AccelY (2bytes), AccelZ (2bytes), // 7 bytes
     //			 Count plant falls (1 byte), Freefalls (1 byte), Single Taps (1 byte) //3 bytes
@@ -312,7 +309,7 @@ static void receive_message()
         return;
     }
     /* 
-      Posible commands: OFF, Red, Green
+      Possible commands: OFF, Red, Green
     */
     if(strncmp((char *)rx_buffer, "OFF" , sizeof(retcode)) == 0){ //OFF -> 4F 46 46
         printf("Led off");

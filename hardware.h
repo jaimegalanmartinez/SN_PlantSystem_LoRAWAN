@@ -15,10 +15,8 @@ extern TCS3472_I2C rgb_sensor;
 extern Si7021 tempHumSensor;
 extern Adafruit_GPS GPS_sensor;
 
-extern DigitalOut TestMode_LED, NormalMode_LED, AdvancedMode_LED;
-extern InterruptIn button, accel_interruptTap;
+//extern DigitalOut TestMode_LED, NormalMode_LED, AdvancedMode_LED;
+extern InterruptIn accel_interruptTap;
 extern AnalogIn moistureSensor, lightSensor;
 extern BusOut RGB_LED;
-extern Ticker halfHourTicker;
-extern Ticker GPS_send_Ticker;
 #endif

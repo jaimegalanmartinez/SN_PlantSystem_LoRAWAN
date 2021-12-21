@@ -9,15 +9,6 @@ void ISR_accelTap(){
 	is_accel_interruptTap = true;
 }
 
-/*
-Transforms a foar value to a short int
-*/
-short int convertMeasureFloatToShort(float valueF){
-	short int value;
-	value = valueF * 100.0;
-	return value;
-}
-
 
 uint16_t writeFrameInBuffer(uint8_t buffer[30], short int temp, unsigned short humidity, unsigned short light,unsigned short moisture,
 	char dominantColor, short int accel_x, short int accel_y, short int accel_z, PlantOrientationLog plantLog, PlantEvents plantEvents, 

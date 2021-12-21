@@ -11,21 +11,17 @@
 #include "accelerometer_advanced.h"
 #include "hardware.h"
 
-#define ON  1
-#define OFF 0
-
-
 extern bool is_accel_interruptTap;
 ////////////////////////////////////
 //Interrupt service routines(ISRs)
 ////////////////////////////////////
-//It is call when pin INT1 of the accelerometer has a rise flank 
+//It is call when pin INT1 of the accelerometer has a rising flank 
 void ISR_accelTap();
 
 ////////////////////////////////////
 //Functions
 ////////////////////////////////////
-/** Function checkRange_and_set_RGB_color
+/** Function writeFrameInBuffer
 	@description Write frame with sensor values, accelerometer advanced parameters and GPS location, GPS time and date.
 	//FRAME: Temp (2bytes), Humidity (2bytes), Light (2bytes), Moisture (2bytes),  //8 bytes
 		//			 Dominant colour (1 byte),AccelX(2 bytes), AccelY (2 bytes), AccelZ (2 bytes), // 7 bytes
@@ -33,6 +29,8 @@ void ISR_accelTap();
 		//       GPS: Latitude (4bytes), Longitude (4bytes) //8 bytes
 		//       GPS: Hour (1 byte), Minutes (1 byte), Day (1 byte) Month (1 byte) //4 bytes
 	@params temperature, humidity, light, moisture, dominantColor, accel_x, accel_y, accel_z, plantLog, plantEvents, latitude, longitude, hour, minutes, day, month
+	@return uint16_t -packet_len - Length of frame written in buffer.
+	
 **/
 uint16_t writeFrameInBuffer(uint8_t buffer[30], short int temp, unsigned short humidity, unsigned short light,unsigned short moisture,
 	char dominantColor, short int accel_x, short int accel_y, short int accel_z, PlantOrientationLog plantLog, PlantEvents plantEvents, 
