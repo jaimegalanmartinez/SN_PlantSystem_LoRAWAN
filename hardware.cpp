@@ -11,14 +11,12 @@ TCS3472_I2C rgb_sensor (PB_9, PB_8);
 Si7021 tempHumSensor(PB_9, PB_8);
 Adafruit_GPS GPS_sensor(new BufferedSerial(PA_9, PA_10, 9600));
 
-DigitalOut TestMode_LED(LED1);
-DigitalOut NormalMode_LED(LED2);
-DigitalOut AdvancedMode_LED(LED3);
-InterruptIn button(PB_2);
+//DigitalOut TestMode_LED(LED1);
+//DigitalOut NormalMode_LED(LED2);
+//DigitalOut AdvancedMode_LED(LED3);
+//InterruptIn button(PB_2);
 InterruptIn accel_interruptTap(PB_15);//INT1
 AnalogIn moistureSensor(PA_0);
 AnalogIn lightSensor(PA_4);
 BusOut RGB_LED(PH_0,PH_1,PB_13);
               //LSB      MSB
-Ticker halfHourTicker;
-Ticker GPS_send_Ticker;
